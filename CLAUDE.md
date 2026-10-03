@@ -5,7 +5,8 @@
 ## Rules
 
 - **Public repository.** No hostnames of the deployed apps, hub or API, no Cloudflare ids, no emails,
-  no secrets. Hosts are passed in by the apps (attributes, env, props).
+  no secrets. Hosts are passed in by the apps (attributes, env, props). One exception, public on
+  purpose: the author site `https://www.tandat17z.workers.dev` (default `author-url` of the menu).
 - **Knows nothing about the apps.** No app names, routes, stores or messages in here; anything
   app-specific comes in through props / options. Add a module only when two apps share it.
 - **No build step.** Ship TypeScript / plain JS / CSS source; `exports` in package.json lists every

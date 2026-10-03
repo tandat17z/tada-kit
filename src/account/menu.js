@@ -16,7 +16,8 @@
 //               to the owner (POST <feedback-url>). With account-url, a request may also name an
 //               email to sync with: it is sent as an account link (POST <account-url>/link), which
 //               the owner approves in the hub.
-//   author-url  optional link to the author's site, shown at the bottom of the menu.
+//   author-url  link to the author's site at the bottom of the menu; defaults to AUTHOR_URL,
+//               author-url="" hides it.
 //   settings    optional (boolean): adds a "Settings" item; clicking it closes the menu and fires
 //               "tdz-account:settings" on window, so the page opens its own settings.
 //
@@ -28,6 +29,9 @@
 // /cdn-cgi/access/logout. No tokens are read or stored here.
 (() => {
   if (typeof customElements === "undefined" || customElements.get("tdz-account")) return; // SSR, or loaded twice
+
+  // The author's public site, linked from every app's menu.
+  const AUTHOR_URL = "https://www.tandat17z.workers.dev";
 
   const TEXT = {
     vi: { signIn: "Đăng nhập", signOut: "Đăng xuất", settings: "Cài đặt", account: "Tài khoản", via: "Đăng nhập qua", admin: "Quyền quản trị", yes: "Có", no: "Không",
@@ -269,7 +273,7 @@
         panel.append(settings);
       }
       panel.append(logout);
-      const authorUrl = this.getAttribute("author-url");
+      const authorUrl = this.getAttribute("author-url") ?? AUTHOR_URL;
       if (authorUrl && /^https?:\/\//.test(authorUrl)) {
         panel.append(Object.assign(document.createElement("a"), {
           className: "author", href: authorUrl, target: "_blank", rel: "noopener noreferrer", textContent: `${t.author} ↗`,

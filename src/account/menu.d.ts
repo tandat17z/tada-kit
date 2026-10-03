@@ -12,7 +12,7 @@ declare module 'react' {
         'account-url'?: string
         /** Central-API /v1/<app>/feedback endpoint: average rating + rate & feedback form. */
         'feedback-url'?: string
-        /** Link to the author's site at the bottom of the menu. */
+        /** Author site at the bottom of the menu (defaults to the kit's; "" hides it). */
         'author-url'?: string
         /** Adds a Settings item that fires "tdz-account:settings" on window. */
         settings?: boolean | ''
