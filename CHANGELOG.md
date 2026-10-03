@@ -2,6 +2,12 @@
 
 All notable changes to `@tada/kit`. Newest first. Apps pin a version by git tag (`#vX.Y.Z`).
 
+## 0.1.7 — 2026-10-04
+
+### Fixed
+- `privateCheck`: the empty page is built per request (Workers refuse a `Response` created in
+  global scope, so 0.1.6 could not be deployed).
+
 ## 0.1.6 — 2026-10-04
 
 ### Added

@@ -24,7 +24,9 @@ export function crossSiteWrite(request, url = new URL(request.url)) {
 const error = (status, code, message) => Response.json({ error: { code, message } }, { status });
 
 // What a user without access gets for every page and file of a private site: an empty page.
-const EMPTY = new Response("<!doctype html><meta charset=utf-8><meta name=robots content=noindex><title></title>", {
+// Built per request: Workers forbid creating a Response in global scope.
+const empty = () =>
+  new Response("<!doctype html><meta charset=utf-8><meta name=robots content=noindex><title></title>", {
   status: 403,
   headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
 });
@@ -68,7 +70,7 @@ export function createApiProxy({ prefixes, privateCheck } = {}) {
     async fetch(request, env) {
       const url = new URL(request.url);
       if (url.pathname !== "/api" && !url.pathname.startsWith("/api/")) {
-        if (privateCheck && !(await allowed(request, env, privateCheck))) return EMPTY.clone();
+        if (privateCheck && !(await allowed(request, env, privateCheck))) return empty();
         return env.ASSETS.fetch(request);
       }
       if (crossSiteWrite(request, url)) return error(403, "forbidden", "Cross-site request");

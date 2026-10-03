@@ -1,6 +1,6 @@
 {
   "name": "@tada/kit",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Shared modules of the tandat17z apps: i18n, brand, account, API proxy, design tokens",
   "type": "module",
   "sideEffects": ["./src/account/menu.js", "*.css"],
