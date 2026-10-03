@@ -15,14 +15,17 @@
 //               average rating and a form to rate it (1-5 stars) and send a request or a message
 //               to the owner (POST <feedback-url>). With account-url, a request may also name an
 //               email to sync with: it is sent as an account link (POST <account-url>/link), which
-//               the owner approves in the hub.
+//               the owner approves in the hub. A user without server storage asks for it from
+//               this form too: "Ask for server storage" (or the page firing
+//               "tdz-account:request-storage") opens the menu with the form set to that request.
 //   author-url  link to the author's site at the bottom of the menu; defaults to AUTHOR_URL,
 //               author-url="" hides it.
 //   settings    optional (boolean): adds a "Settings" item; clicking it closes the menu and fires
 //               "tdz-account:settings" on window, so the page opens its own settings.
 //
 // Events on window: listens to "tdz-account:refresh" (re-read the account, e.g. after the page sent
-// a request itself), fires "tdz-account:change" after a request sent from the menu and
+// a request itself) and "tdz-account:request-storage" (open the menu on the storage request form),
+// fires "tdz-account:change" after a request sent from the menu and
 // "tdz-account:settings" when the Settings item is clicked.
 //
 // Identity comes from /cdn-cgi/access/get-identity on the current host; sign-out uses
@@ -46,7 +49,10 @@
       thanksTitle: "Cảm ơn bạn!", thanksRating: "Đánh giá của bạn đã được ghi nhận.",
       thanksMessage: "Lời nhắn đã được gửi tới tác giả. Mọi góp ý đều giúp ứng dụng tốt hơn.",
       thanksRequest: "Yêu cầu đã được gửi tới tác giả, bạn sẽ sớm nhận được phản hồi.",
-      thanksSync: "Yêu cầu đồng bộ với {email} đang chờ duyệt.", close: "Đóng" },
+      thanksSync: "Yêu cầu đồng bộ với {email} đang chờ duyệt.", close: "Đóng",
+      askStorage: "Xin lưu dữ liệu trên server", askStorageHint: "Giữ dữ liệu an toàn và dùng trên mọi thiết bị.",
+      syncHint: "Đã có tài khoản khác? Ghi email đó để dùng chung dữ liệu.", sendRequest: "Gửi yêu cầu", requestText: "Bạn cần gì thêm? (không bắt buộc)",
+      thanksStorage: "Yêu cầu lưu dữ liệu trên server đang chờ duyệt." },
     en: { signIn: "Sign in", signOut: "Sign out", settings: "Settings", account: "Account", via: "Signed in with", admin: "Admin rights", yes: "Yes", no: "No",
       storage: "Data stored", cloud: "Server", local: "This browser", readonly: "Browser (server read-only)",
       request: "Ask for server storage", pending: "Request sent, waiting for approval.", rejected: "Your last request was not approved.",
@@ -59,7 +65,10 @@
       thanksTitle: "Thank you!", thanksRating: "Your rating has been saved.",
       thanksMessage: "Your message has been sent to the author. Every bit of feedback makes the app better.",
       thanksRequest: "Your request has been sent to the author, you will hear back soon.",
-      thanksSync: "The request to sync with {email} is waiting for approval.", close: "Close" },
+      thanksSync: "The request to sync with {email} is waiting for approval.", close: "Close",
+      askStorage: "Ask to store my data on the server", askStorageHint: "Keeps your data safe and on every device.",
+      syncHint: "Have another account? Enter its email to share its data.", sendRequest: "Send request", requestText: "Anything else you need? (optional)",
+      thanksStorage: "Your request for server storage is waiting for approval." },
   };
 
   const initials = (name, email) => {
@@ -156,6 +165,18 @@
     .thanks p { margin: 0 0 6px; color: var(--muted, #9ba2ac); font-size: 13px; }
     .thanks .btn { width: 100%; margin-top: 12px; height: 36px; }
     @keyframes pop { from { transform: scale(.94); opacity: 0; } }
+    .btn.warn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 36px;
+      /* Amber mixed with the text colour: light on dark themes, dark enough on light ones. */
+      border-color: #e0a0207a; background: #e0a0201f; color: color-mix(in srgb, #e0a020 65%, var(--fg, var(--ink, #e7e9ec))); font-weight: 600; }
+    .btn.warn:hover { background: #e0a02033; }
+    .btn.warn svg { width: 16px; height: 16px; flex: none; }
+    .reqbox { display: grid; gap: 8px; padding: 10px; border-radius: 10px; border: 1px solid var(--border, #1f2328); background: var(--surface-2, #14171b); }
+    .reqbox p.hint { margin: -2px 0 0; font-size: 11px; color: var(--subtle, var(--muted, #8a919c)); }
+    .check { display: grid; grid-template-columns: 16px 1fr; column-gap: 8px; align-items: start; color: inherit; font-weight: 500; }
+    .check .tick { display: grid; place-items: center; width: 16px; height: 16px; margin-top: 1px; border-radius: 4px; font-size: 11px; line-height: 1;
+      background: var(--accent, #7ee0c3); color: var(--accent-fg, #04110d); }
+    .check small { grid-column: 2; font-weight: 400; font-size: 11px; color: var(--subtle, var(--muted, #8a919c)); }
+    .warn-text { color: #f2c46d; }
     [hidden] { display: none !important; }
   `;
 
@@ -261,6 +282,17 @@
         panel.hidden = !open;
         button.setAttribute("aria-expanded", String(open));
       };
+      if (this.getAttribute("account-url")) {
+        // Deferred: the click that fired it would otherwise close the menu again (outside click).
+        this.onRequestStorage = () => setTimeout(() => {
+          if (!this.canAskStorage()) return;
+          setOpen(true);
+          if (this.getAttribute("feedback-url")) this.renderFeedbackForm({ storage: true });
+          else this.renderRequestForm();
+          this.scrollIntoView({ block: "nearest" });
+        });
+        window.addEventListener("tdz-account:request-storage", this.onRequestStorage);
+      }
       if (this.hasAttribute("settings")) {
         const settings = Object.assign(document.createElement("button"), { type: "button", className: "settings" });
         // Static markup only (no data): a gear icon.
@@ -296,6 +328,7 @@
 
     disconnectedCallback() {
       if (this.onRefresh) window.removeEventListener("tdz-account:refresh", this.onRefresh);
+      if (this.onRequestStorage) window.removeEventListener("tdz-account:request-storage", this.onRequestStorage);
     }
 
     // "Data stored" line and the request form, from the account endpoint (shared apps only).
@@ -313,7 +346,8 @@
         Object.assign(document.createElement("dt"), { textContent: t.storage }),
         Object.assign(document.createElement("dd"), { textContent: t[mode], className: mode === "cloud" ? "yes" : "no" }),
       );
-      this.dl.append(d);
+      // Above the rating line, which may have been added first.
+      this.dl.insertBefore(d, this.ratingRow ?? null);
       this.storageRow = d;
       if (mode === "cloud" || acc.access !== "shared") return;
 
@@ -322,8 +356,12 @@
       if (status === "pending") return void note(t.pending);
       if (status === "rejected") note(t.rejected);
 
-      const ask = Object.assign(document.createElement("button"), { type: "button", className: "btn", textContent: t.request });
-      ask.addEventListener("click", () => this.renderRequestForm());
+      const ask = Object.assign(document.createElement("button"), { type: "button", className: "btn warn" });
+      // Static markup only (no data): a warning triangle.
+      ask.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+      ask.append(t.request);
+      // With the feedback form, the storage request is one of its requests (no separate note form).
+      ask.addEventListener("click", () => (this.getAttribute("feedback-url") ? this.renderFeedbackForm({ storage: true }) : this.renderRequestForm()));
       this.storageBox.append(ask);
     }
 
@@ -346,10 +384,17 @@
       this.feedbackBox.replaceChildren(open);
     }
 
-    renderFeedbackForm() {
+    // Shared app, data not on the server and nothing pending: the user may ask for server storage.
+    canAskStorage() {
+      const acc = this.account;
+      return !!this.getAttribute("account-url") && acc?.access === "shared" && !!acc.storage && acc.storage !== "cloud" && acc.request?.status !== "pending";
+    }
+
+    renderFeedbackForm({ storage = false } = {}) {
       const t = this.t;
-      let stars = this.rating?.mine ?? 0;
-      let kind = "message";
+      // 5 stars until the user picks otherwise (their own rating when they already rated).
+      let stars = this.rating?.mine ?? 5;
+      let kind = storage ? "request" : "message";
 
       const mine = this.rating?.mine;
       const label = Object.assign(document.createElement("p"), { textContent: mine ? `${t.yourRating} (${t.rated} ${mine} ${t.star})` : t.yourRating });
@@ -380,16 +425,34 @@
         b.addEventListener("click", () => {
           kind = k;
           kindButtons.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-          sync.hidden = kind !== "request" || !accountUrl;
+          showRequestFields();
         });
         return b;
       });
       kinds.append(...kindButtons);
+      // Data already on the server: nothing left to ask for, only rating and messages.
+      kinds.hidden = this.account?.storage === "cloud";
 
-      // Request only: the email whose data this account should share (an account link).
+      // Request card. Server storage (POST <account-url>/request) always goes with a request while it
+      // can be asked for, and the email whose data this account should share (an account link).
       const accountUrl = this.getAttribute("account-url");
-      const sync = Object.assign(document.createElement("input"), { type: "email", maxLength: 254, placeholder: t.syncWith, hidden: true });
+      const storageRow = Object.assign(document.createElement("div"), { className: "check" });
+      storageRow.append(Object.assign(document.createElement("span"), { className: "tick", textContent: "✓" }), t.askStorage, Object.assign(document.createElement("small"), { textContent: t.askStorageHint }));
+      const sync = Object.assign(document.createElement("input"), { type: "email", maxLength: 254, placeholder: t.syncWith });
       sync.setAttribute("aria-label", t.syncWith);
+      const syncHint = Object.assign(document.createElement("p"), { className: "hint", textContent: t.syncHint });
+      const reqbox = Object.assign(document.createElement("div"), { className: "reqbox" });
+      reqbox.append(storageRow, sync, syncHint);
+      const showRequestFields = () => {
+        const request = kind === "request";
+        storageRow.hidden = !request || !this.canAskStorage();
+        sync.hidden = syncHint.hidden = !request || !accountUrl;
+        reqbox.hidden = storageRow.hidden && sync.hidden;
+        // Stars belong to feedback, not to a request.
+        label.hidden = starRow.hidden = request;
+        box.placeholder = request ? t.requestText : t.feedbackText;
+        send.textContent = request ? t.sendRequest : t.send;
+      };
 
       const box = Object.assign(document.createElement("textarea"), { maxLength: 1000, placeholder: t.feedbackText });
       box.setAttribute("aria-label", t.feedbackText);
@@ -398,14 +461,21 @@
       const actions = Object.assign(document.createElement("div"), { className: "actions" });
       actions.append(cancel, send);
       const error = Object.assign(document.createElement("p"), { className: "err", hidden: true });
-      this.feedbackBox.replaceChildren(label, starRow, kinds, sync, box, actions, error);
+      showRequestFields();
+      // Request first when it is what the user came for; the rating stays below, optional.
+      this.feedbackBox.replaceChildren(kinds, reqbox, label, starRow, box, actions, error);
+      if (storage) box.focus();
 
-      cancel.addEventListener("click", () => this.renderFeedback());
+      cancel.addEventListener("click", () => {
+        this.renderFeedback();
+        this.renderStorage();
+      });
       send.addEventListener("click", async () => {
         const message = box.value.trim();
         const primary = !sync.hidden ? sync.value.trim().toLowerCase() : "";
-        const changed = stars > 0 && stars !== this.rating?.mine;
-        if (!changed && !message && !primary) return this.renderFeedback();
+        const changed = kind !== "request" && stars > 0 && stars !== this.rating?.mine;
+        const askStorage = !storageRow.hidden;
+        if (!changed && !message && !primary && !askStorage) return this.renderFeedback();
         const fail = (text) => {
           send.disabled = cancel.disabled = false;
           error.hidden = false;
@@ -413,6 +483,16 @@
         };
         if (primary && !sync.checkValidity()) return fail(t.badEmail);
         send.disabled = cancel.disabled = true;
+        if (askStorage) {
+          const req = await postJson(`${accountUrl}/request`, message ? { message } : {});
+          if (req.status !== 200 && req.status !== 201) {
+            return fail(req.body?.error?.code === "request_cooldown" ? t.cooldown : t.failed);
+          }
+          const request = { status: "pending", message: message || null, requestedAt: new Date().toISOString(), decidedAt: null };
+          this.account = { ...this.account, request };
+          this.renderStorage();
+          window.dispatchEvent(new CustomEvent("tdz-account:change", { detail: this.account }));
+        }
         if (primary) {
           const link = await postJson(`${accountUrl}/link`, message ? { primary, message } : { primary });
           if (link.status !== 200 && link.status !== 201) {
@@ -421,31 +501,34 @@
               : code === "invalid_link" || link.status === 400 ? t.linkInvalid : t.failed);
           }
           window.dispatchEvent(new CustomEvent("tdz-account:refresh"));
-          if (!changed && !message) {
-            this.renderFeedback();
-            return this.showThanks({ kind, primary });
-          }
+        }
+        // The message already went with the storage / link request (and its Telegram notice).
+        const feedbackMessage = askStorage || primary ? "" : message;
+        if (!changed && !feedbackMessage) {
+          this.renderFeedback();
+          return this.showThanks({ kind, message, primary, storage: askStorage });
         }
         const res = await postJson(this.getAttribute("feedback-url"), {
           ...(changed ? { stars } : {}),
-          ...(message ? { kind, message } : {}),
+          ...(feedbackMessage ? { kind, message: feedbackMessage } : {}),
         });
         if (res.status === 201) {
           this.rating = res.body;
           this.renderFeedback();
-          return this.showThanks({ stars: changed ? stars : 0, kind, message, primary });
+          return this.showThanks({ stars: changed ? stars : 0, kind, message, primary, storage: askStorage });
         }
         fail(res.body?.error?.code === "feedback_limit" ? t.limit : t.failed);
       });
     }
 
     // Thank-you popup after a rating / message / request; closes the menu behind it.
-    showThanks({ stars = 0, kind, message = "", primary = "" }) {
+    showThanks({ stars = 0, kind, message = "", primary = "", storage = false }) {
       const t = this.t;
       this.shadowRoot.querySelector(".panel")?.setAttribute("hidden", "");
       this.shadowRoot.querySelector("button.avatar")?.setAttribute("aria-expanded", "false");
       const lines = [];
-      if (message) lines.push(kind === "request" ? t.thanksRequest : t.thanksMessage);
+      if (message && !storage && !primary) lines.push(kind === "request" ? t.thanksRequest : t.thanksMessage);
+      if (storage) lines.push(t.thanksStorage);
       if (primary) lines.push(t.thanksSync.replace("{email}", primary));
       if (stars) lines.push(`${"★".repeat(stars)}${"☆".repeat(5 - stars)} · ${t.thanksRating}`);
 
