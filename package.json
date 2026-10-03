@@ -1,0 +1,44 @@
+{
+  "name": "@tada/kit",
+  "version": "0.1.0",
+  "description": "Shared modules of the tandat17z apps: i18n, brand, account, API proxy, design tokens",
+  "type": "module",
+  "sideEffects": ["./src/account/menu.js", "*.css"],
+  "exports": {
+    "./i18n": "./src/i18n/index.ts",
+    "./brand": "./src/brand/index.ts",
+    "./account": "./src/account/index.ts",
+    "./account-menu": {
+      "types": "./src/account/menu.d.ts",
+      "default": "./src/account/menu.js"
+    },
+    "./proxy": {
+      "types": "./src/proxy/index.d.ts",
+      "default": "./src/proxy/index.js"
+    },
+    "./tokens.css": "./src/tokens.css"
+  },
+  "bin": {
+    "tada-copy-account-menu": "bin/copy-account-menu.mjs"
+  },
+  "files": ["src", "bin"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "~6.0.2"
+  }
+}
