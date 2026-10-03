@@ -11,6 +11,12 @@
 //   account-url optional central-API account endpoint (/v1/<app>/account) of a shared app: shows
 //               where the user's data is stored and lets a user without server storage ask the
 //               owner for it (POST <account-url>/request). Also an email fallback, like me-url.
+//   feedback-url optional central-API feedback endpoint (/v1/<app>/feedback): shows the app's
+//               average rating and a form to rate it (1-5 stars) and send a request or a message
+//               to the owner (POST <feedback-url>). With account-url, a request may also name an
+//               email to sync with: it is sent as an account link (POST <account-url>/link), which
+//               the owner approves in the hub.
+//   author-url  optional link to the author's site, shown at the bottom of the menu.
 //   settings    optional (boolean): adds a "Settings" item; clicking it closes the menu and fires
 //               "tdz-account:settings" on window, so the page opens its own settings.
 //
@@ -27,11 +33,29 @@
     vi: { signIn: "Đăng nhập", signOut: "Đăng xuất", settings: "Cài đặt", account: "Tài khoản", via: "Đăng nhập qua", admin: "Quyền quản trị", yes: "Có", no: "Không",
       storage: "Lưu dữ liệu", cloud: "Server", local: "Trình duyệt này", readonly: "Trình duyệt (server chỉ xem)",
       request: "Yêu cầu lưu trên server", pending: "Đã gửi yêu cầu, đang chờ duyệt.", rejected: "Yêu cầu trước chưa được chấp nhận.",
-      message: "Lời nhắn (không bắt buộc)", send: "Gửi", cancel: "Huỷ", cooldown: "Gửi lại được sau một ngày.", failed: "Không gửi được, thử lại sau." },
+      message: "Lời nhắn (không bắt buộc)", send: "Gửi", cancel: "Huỷ", cooldown: "Gửi lại được sau một ngày.", failed: "Không gửi được, thử lại sau.",
+      rating: "Đánh giá", noRating: "Chưa có", feedback: "Đánh giá & góp ý", yourRating: "Đánh giá của bạn", rated: "đã chấm", star: "sao",
+      kindMessage: "Lời nhắn", kindRequest: "Yêu cầu", feedbackText: "Bạn muốn nhắn gì? (không bắt buộc)", thanks: "Cảm ơn bạn đã góp ý!",
+      limit: "Hôm nay bạn đã gửi nhiều rồi, mai gửi tiếp nhé.", author: "Về tác giả",
+      syncWith: "Đồng bộ với email (để trống: tạo mới)", badEmail: "Email không hợp lệ.", linkInvalid: "Không liên kết được với email này.",
+      linked: "Tài khoản đã được liên kết rồi.", linkSent: "Đã gửi yêu cầu đồng bộ, chờ duyệt.",
+      thanksTitle: "Cảm ơn bạn!", thanksRating: "Đánh giá của bạn đã được ghi nhận.",
+      thanksMessage: "Lời nhắn đã được gửi tới tác giả. Mọi góp ý đều giúp ứng dụng tốt hơn.",
+      thanksRequest: "Yêu cầu đã được gửi tới tác giả, bạn sẽ sớm nhận được phản hồi.",
+      thanksSync: "Yêu cầu đồng bộ với {email} đang chờ duyệt.", close: "Đóng" },
     en: { signIn: "Sign in", signOut: "Sign out", settings: "Settings", account: "Account", via: "Signed in with", admin: "Admin rights", yes: "Yes", no: "No",
       storage: "Data stored", cloud: "Server", local: "This browser", readonly: "Browser (server read-only)",
       request: "Ask for server storage", pending: "Request sent, waiting for approval.", rejected: "Your last request was not approved.",
-      message: "Message (optional)", send: "Send", cancel: "Cancel", cooldown: "You can ask again after a day.", failed: "Could not send, try again later." },
+      message: "Message (optional)", send: "Send", cancel: "Cancel", cooldown: "You can ask again after a day.", failed: "Could not send, try again later.",
+      rating: "Rating", noRating: "None yet", feedback: "Rate & feedback", yourRating: "Your rating", rated: "rated", star: "stars",
+      kindMessage: "Message", kindRequest: "Request", feedbackText: "Anything to tell us? (optional)", thanks: "Thanks for your feedback!",
+      limit: "That is a lot for today, try again tomorrow.", author: "About the author",
+      syncWith: "Sync with email (empty: start new)", badEmail: "Invalid email.", linkInvalid: "Cannot link to this email.",
+      linked: "This account is already linked.", linkSent: "Sync request sent, waiting for approval.",
+      thanksTitle: "Thank you!", thanksRating: "Your rating has been saved.",
+      thanksMessage: "Your message has been sent to the author. Every bit of feedback makes the app better.",
+      thanksRequest: "Your request has been sent to the author, you will hear back soon.",
+      thanksSync: "The request to sync with {email} is waiting for approval.", close: "Close" },
   };
 
   const initials = (name, email) => {
@@ -95,6 +119,9 @@
     .storage:empty { display: none; }
     .storage p { margin: 0; color: var(--muted, #9ba2ac); }
     .storage p.err { color: #f2c46d; }
+    .storage input[type=email] { box-sizing: border-box; width: 100%; height: 32px; padding: 0 8px; border-radius: 8px;
+      border: 1px solid var(--border-strong, var(--border, #2d3239)); background: var(--bg, #0b0c0e); color: inherit; font: inherit; }
+    .storage input[type=email]:focus-visible { outline: 2px solid var(--accent, #7ee0c3); outline-offset: 1px; }
     .storage textarea { box-sizing: border-box; width: 100%; min-height: 56px; padding: 6px 8px; border-radius: 8px; resize: vertical;
       border: 1px solid var(--border-strong, var(--border, #2d3239)); background: var(--bg, #0b0c0e); color: inherit; font: inherit; }
     .actions { display: flex; gap: 8px; }
@@ -105,6 +132,26 @@
     .btn.primary:hover { opacity: .9; background: var(--accent, #7ee0c3); }
     .btn:disabled { opacity: .5; cursor: default; }
     .btn:focus-visible, .storage textarea:focus-visible { outline: 2px solid var(--accent, #7ee0c3); outline-offset: 1px; }
+    .stars { display: flex; gap: 2px; }
+    .stars button { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: pointer;
+      font-size: 20px; line-height: 1; color: var(--border-strong, #2d3239); }
+    .stars button.on { color: #f2c46d; }
+    .stars button:focus-visible, .kinds button:focus-visible, .author:focus-visible { outline: 2px solid var(--accent, #7ee0c3); }
+    .kinds { display: flex; gap: 4px; padding: 2px; border-radius: 8px; border: 1px solid var(--border, #1f2328); }
+    .kinds button { flex: 1; height: 26px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; color: var(--muted, #9ba2ac); }
+    .kinds button[aria-pressed="true"] { background: var(--surface-2, #14171b); color: inherit; }
+    dd.star { color: #f2c46d; }
+    .author { display: block; margin-top: 10px; text-align: center; font-size: 12px; color: var(--muted, #9ba2ac); text-decoration: none; }
+    .author:hover { color: var(--accent, #7ee0c3); text-decoration: underline; }
+    .thanks { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: #0009; }
+    .thanks > div { box-sizing: border-box; width: min(340px, 100%); padding: 24px 20px 20px; border-radius: 14px; text-align: center;
+      border: 1px solid var(--border-strong, var(--border, #2d3239)); background: var(--surface, #0f1114); box-shadow: 0 16px 40px #0008;
+      animation: pop .18s ease-out; }
+    .thanks .icon { font-size: 34px; line-height: 1; }
+    .thanks h2 { margin: 10px 0 6px; font-size: 17px; }
+    .thanks p { margin: 0 0 6px; color: var(--muted, #9ba2ac); font-size: 13px; }
+    .thanks .btn { width: 100%; margin-top: 12px; height: 36px; }
+    @keyframes pop { from { transform: scale(.94); opacity: 0; } }
     [hidden] { display: none !important; }
   `;
 
@@ -131,6 +178,8 @@
         email = me.body?.email;
       }
       if (!email) return this.renderSignedOut();
+      const feedbackUrl = this.getAttribute("feedback-url");
+      if (feedbackUrl) this.rating = (await getJson(feedbackUrl)).body;
       if (accountUrl) {
         this.onRefresh = async () => {
           this.account = (await getJson(accountUrl)).body ?? this.account;
@@ -196,11 +245,13 @@
 
       this.dl = dl;
       this.storageBox = Object.assign(document.createElement("div"), { className: "storage" });
+      this.feedbackBox = Object.assign(document.createElement("div"), { className: "storage" });
 
       const logout = Object.assign(document.createElement("a"), { className: "logout", href: "/cdn-cgi/access/logout", textContent: t.signOut });
-      panel.append(who, dl, this.storageBox);
+      panel.append(who, dl, this.storageBox, this.feedbackBox);
       root.append(button, panel);
       this.renderStorage();
+      this.renderFeedback();
 
       const setOpen = (open) => {
         panel.hidden = !open;
@@ -218,6 +269,12 @@
         panel.append(settings);
       }
       panel.append(logout);
+      const authorUrl = this.getAttribute("author-url");
+      if (authorUrl && /^https?:\/\//.test(authorUrl)) {
+        panel.append(Object.assign(document.createElement("a"), {
+          className: "author", href: authorUrl, target: "_blank", rel: "noopener noreferrer", textContent: `${t.author} ↗`,
+        }));
+      }
       button.addEventListener("click", (e) => {
         e.stopPropagation();
         setOpen(panel.hidden);
@@ -264,6 +321,161 @@
       const ask = Object.assign(document.createElement("button"), { type: "button", className: "btn", textContent: t.request });
       ask.addEventListener("click", () => this.renderRequestForm());
       this.storageBox.append(ask);
+    }
+
+    // Average rating line and the "Rate & feedback" button (feedback-url only).
+    renderFeedback() {
+      const t = this.t;
+      if (!this.getAttribute("feedback-url")) return;
+      const r = this.rating;
+      this.ratingRow?.remove();
+      const d = document.createElement("div");
+      d.append(
+        Object.assign(document.createElement("dt"), { textContent: t.rating }),
+        Object.assign(document.createElement("dd"), { textContent: r?.count ? `★ ${r.average} (${r.count})` : t.noRating, className: r?.count ? "star" : "" }),
+      );
+      this.dl.append(d);
+      this.ratingRow = d;
+
+      const open = Object.assign(document.createElement("button"), { type: "button", className: "btn", textContent: t.feedback });
+      open.addEventListener("click", () => this.renderFeedbackForm());
+      this.feedbackBox.replaceChildren(open);
+    }
+
+    renderFeedbackForm() {
+      const t = this.t;
+      let stars = this.rating?.mine ?? 0;
+      let kind = "message";
+
+      const mine = this.rating?.mine;
+      const label = Object.assign(document.createElement("p"), { textContent: mine ? `${t.yourRating} (${t.rated} ${mine} ${t.star})` : t.yourRating });
+      const starRow = Object.assign(document.createElement("div"), { className: "stars" });
+      starRow.setAttribute("role", "radiogroup");
+      starRow.setAttribute("aria-label", t.yourRating);
+      const starButtons = [1, 2, 3, 4, 5].map((n) => {
+        const b = Object.assign(document.createElement("button"), { type: "button", textContent: "★" });
+        b.setAttribute("role", "radio");
+        b.setAttribute("aria-label", `${n} ${t.star}`);
+        b.addEventListener("click", () => {
+          stars = n;
+          paint();
+        });
+        return b;
+      });
+      const paint = () => starButtons.forEach((b, i) => {
+        b.classList.toggle("on", i < stars);
+        b.setAttribute("aria-checked", String(i + 1 === stars));
+      });
+      starRow.append(...starButtons);
+      paint();
+
+      const kinds = Object.assign(document.createElement("div"), { className: "kinds" });
+      const kindButtons = [["message", t.kindMessage], ["request", t.kindRequest]].map(([k, text]) => {
+        const b = Object.assign(document.createElement("button"), { type: "button", textContent: text });
+        b.setAttribute("aria-pressed", String(k === kind));
+        b.addEventListener("click", () => {
+          kind = k;
+          kindButtons.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+          sync.hidden = kind !== "request" || !accountUrl;
+        });
+        return b;
+      });
+      kinds.append(...kindButtons);
+
+      // Request only: the email whose data this account should share (an account link).
+      const accountUrl = this.getAttribute("account-url");
+      const sync = Object.assign(document.createElement("input"), { type: "email", maxLength: 254, placeholder: t.syncWith, hidden: true });
+      sync.setAttribute("aria-label", t.syncWith);
+
+      const box = Object.assign(document.createElement("textarea"), { maxLength: 1000, placeholder: t.feedbackText });
+      box.setAttribute("aria-label", t.feedbackText);
+      const cancel = Object.assign(document.createElement("button"), { type: "button", className: "btn", textContent: t.cancel });
+      const send = Object.assign(document.createElement("button"), { type: "button", className: "btn primary", textContent: t.send });
+      const actions = Object.assign(document.createElement("div"), { className: "actions" });
+      actions.append(cancel, send);
+      const error = Object.assign(document.createElement("p"), { className: "err", hidden: true });
+      this.feedbackBox.replaceChildren(label, starRow, kinds, sync, box, actions, error);
+
+      cancel.addEventListener("click", () => this.renderFeedback());
+      send.addEventListener("click", async () => {
+        const message = box.value.trim();
+        const primary = !sync.hidden ? sync.value.trim().toLowerCase() : "";
+        const changed = stars > 0 && stars !== this.rating?.mine;
+        if (!changed && !message && !primary) return this.renderFeedback();
+        const fail = (text) => {
+          send.disabled = cancel.disabled = false;
+          error.hidden = false;
+          error.textContent = text;
+        };
+        if (primary && !sync.checkValidity()) return fail(t.badEmail);
+        send.disabled = cancel.disabled = true;
+        if (primary) {
+          const link = await postJson(`${accountUrl}/link`, message ? { primary, message } : { primary });
+          if (link.status !== 200 && link.status !== 201) {
+            const code = link.body?.error?.code;
+            return fail(code === "already_linked" ? t.linked : code === "request_cooldown" ? t.cooldown
+              : code === "invalid_link" || link.status === 400 ? t.linkInvalid : t.failed);
+          }
+          window.dispatchEvent(new CustomEvent("tdz-account:refresh"));
+          if (!changed && !message) {
+            this.renderFeedback();
+            return this.showThanks({ kind, primary });
+          }
+        }
+        const res = await postJson(this.getAttribute("feedback-url"), {
+          ...(changed ? { stars } : {}),
+          ...(message ? { kind, message } : {}),
+        });
+        if (res.status === 201) {
+          this.rating = res.body;
+          this.renderFeedback();
+          return this.showThanks({ stars: changed ? stars : 0, kind, message, primary });
+        }
+        fail(res.body?.error?.code === "feedback_limit" ? t.limit : t.failed);
+      });
+    }
+
+    // Thank-you popup after a rating / message / request; closes the menu behind it.
+    showThanks({ stars = 0, kind, message = "", primary = "" }) {
+      const t = this.t;
+      this.shadowRoot.querySelector(".panel")?.setAttribute("hidden", "");
+      this.shadowRoot.querySelector("button.avatar")?.setAttribute("aria-expanded", "false");
+      const lines = [];
+      if (message) lines.push(kind === "request" ? t.thanksRequest : t.thanksMessage);
+      if (primary) lines.push(t.thanksSync.replace("{email}", primary));
+      if (stars) lines.push(`${"★".repeat(stars)}${"☆".repeat(5 - stars)} · ${t.thanksRating}`);
+
+      const overlay = Object.assign(document.createElement("div"), { className: "thanks" });
+      const card = document.createElement("div");
+      card.setAttribute("role", "dialog");
+      card.setAttribute("aria-modal", "true");
+      card.setAttribute("aria-label", t.thanksTitle);
+      card.append(
+        Object.assign(document.createElement("div"), { className: "icon", textContent: kind === "request" && message ? "🙌" : "💛" }),
+        Object.assign(document.createElement("h2"), { textContent: t.thanksTitle }),
+        ...lines.map((textContent) => Object.assign(document.createElement("p"), { textContent })),
+      );
+      const close = Object.assign(document.createElement("button"), { type: "button", className: "btn primary", textContent: t.close });
+      card.append(close);
+      overlay.append(card);
+      const done = () => {
+        host.remove();
+        document.removeEventListener("keydown", onKey, true);
+      };
+      const onKey = (e) => {
+        if (e.key === "Escape") done();
+      };
+      close.addEventListener("click", done);
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) done();
+      });
+      document.addEventListener("keydown", onKey, true);
+      // On <body> (own shadow root): a blurred/transformed header would trap position: fixed.
+      const host = document.createElement("div");
+      host.attachShadow({ mode: "open" }).innerHTML = `<style>${CSS}</style>`;
+      host.shadowRoot.append(overlay);
+      document.body.append(host);
+      close.focus();
     }
 
     renderRequestForm() {

@@ -10,6 +10,10 @@ declare module 'react' {
         'admin-url'?: string
         'me-url'?: string
         'account-url'?: string
+        /** Central-API /v1/<app>/feedback endpoint: average rating + rate & feedback form. */
+        'feedback-url'?: string
+        /** Link to the author's site at the bottom of the menu. */
+        'author-url'?: string
         /** Adds a Settings item that fires "tdz-account:settings" on window. */
         settings?: boolean | ''
       }
