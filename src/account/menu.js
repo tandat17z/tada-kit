@@ -51,7 +51,7 @@
       thanksRequest: "Yêu cầu đã được gửi tới tác giả, bạn sẽ sớm nhận được phản hồi.",
       thanksSync: "Yêu cầu đồng bộ với {email} đang chờ duyệt.", close: "Đóng",
       askStorage: "Xin lưu dữ liệu trên server", askStorageHint: "Giữ dữ liệu an toàn và dùng trên mọi thiết bị.",
-      syncHint: "Đã có tài khoản khác? Ghi email đó để dùng chung dữ liệu.", sendRequest: "Gửi yêu cầu", requestText: "Bạn cần gì thêm? (không bắt buộc)",
+      syncHint: "Đã có tài khoản khác? Ghi email đó để dùng chung dữ liệu.", sendRequest: "Gửi yêu cầu", requestText: "Bạn cần gì? (bắt buộc)", noteRequired: "Hãy ghi vài dòng cho yêu cầu này.",
       thanksStorage: "Yêu cầu lưu dữ liệu trên server đang chờ duyệt." },
     en: { signIn: "Sign in", signOut: "Sign out", settings: "Settings", account: "Account", via: "Signed in with", admin: "Admin rights", yes: "Yes", no: "No",
       storage: "Data stored", cloud: "Server", local: "This browser", readonly: "Browser (server read-only)",
@@ -67,7 +67,7 @@
       thanksRequest: "Your request has been sent to the author, you will hear back soon.",
       thanksSync: "The request to sync with {email} is waiting for approval.", close: "Close",
       askStorage: "Ask to store my data on the server", askStorageHint: "Keeps your data safe and on every device.",
-      syncHint: "Have another account? Enter its email to share its data.", sendRequest: "Send request", requestText: "Anything else you need? (optional)",
+      syncHint: "Have another account? Enter its email to share its data.", sendRequest: "Send request", requestText: "What do you need? (required)", noteRequired: "Please add a few words to this request.",
       thanksStorage: "Your request for server storage is waiting for approval." },
   };
 
@@ -353,7 +353,7 @@
 
       const note = (text, className = "") => this.storageBox.appendChild(Object.assign(document.createElement("p"), { textContent: text, className }));
       const status = acc.request?.status;
-      if (status === "pending") return void note(t.pending);
+      if (status === "pending") note(t.pending);
       if (status === "rejected") note(t.rejected);
 
       const ask = Object.assign(document.createElement("button"), { type: "button", className: "btn warn" });
@@ -384,10 +384,11 @@
       this.feedbackBox.replaceChildren(open);
     }
 
-    // Shared app, data not on the server and nothing pending: the user may ask for server storage.
+    // Shared app and data not on the server: every request also asks for server storage (asking
+    // again while one is pending is harmless, the API keeps the pending one).
     canAskStorage() {
       const acc = this.account;
-      return !!this.getAttribute("account-url") && acc?.access === "shared" && !!acc.storage && acc.storage !== "cloud" && acc.request?.status !== "pending";
+      return !!this.getAttribute("account-url") && acc?.access === "shared" && !!acc.storage && acc.storage !== "cloud";
     }
 
     renderFeedbackForm({ storage = false } = {}) {
@@ -430,8 +431,6 @@
         return b;
       });
       kinds.append(...kindButtons);
-      // Data already on the server: nothing left to ask for, only rating and messages.
-      kinds.hidden = this.account?.storage === "cloud";
 
       // Request card. Server storage (POST <account-url>/request) always goes with a request while it
       // can be asked for, and the email whose data this account should share (an account link).
@@ -475,12 +474,17 @@
         const primary = !sync.hidden ? sync.value.trim().toLowerCase() : "";
         const changed = kind !== "request" && stars > 0 && stars !== this.rating?.mine;
         const askStorage = !storageRow.hidden;
-        if (!changed && !message && !primary && !askStorage) return this.renderFeedback();
         const fail = (text) => {
           send.disabled = cancel.disabled = false;
           error.hidden = false;
           error.textContent = text;
         };
+        // A request always says what it is for.
+        if (kind === "request" && !message) {
+          fail(t.noteRequired);
+          return box.focus();
+        }
+        if (!changed && !message && !primary && !askStorage) return this.renderFeedback();
         if (primary && !sync.checkValidity()) return fail(t.badEmail);
         send.disabled = cancel.disabled = true;
         if (askStorage) {

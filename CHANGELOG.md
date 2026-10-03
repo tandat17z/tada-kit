@@ -2,6 +2,17 @@
 
 All notable changes to `@tada/kit`. Newest first. Apps pin a version by git tag (`#vX.Y.Z`).
 
+## 0.1.8 — 2026-10-04
+
+### Changed
+- Account menu requests: always available (also once the data is on the server, to sync an
+  email); a note is required; while the data is not on the server every request also asks for
+  server storage (also when one is pending: the API refreshes it), plus an account link when an
+  email to sync with is given. The highlighted storage button stays while a request is pending.
+
+### Added
+- README: recipes for a new app (account menu with storage, rating & feedback; private site).
+
 ## 0.1.7 — 2026-10-04
 
 ### Fixed
