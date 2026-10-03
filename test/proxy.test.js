@@ -52,3 +52,27 @@ test("forwards without cookies, keeps the query", async () => {
   assert.equal(req.headers.get("Cookie"), null);
   assert.equal(req.headers.get("Cf-Access-Jwt-Assertion"), "jwt");
 });
+
+test("privateCheck: pages only for users the API allows, an empty page for the rest", async () => {
+  const proxy = createApiProxy({ privateCheck: "/admin/me" });
+  const asked = [];
+  const privateEnv = {
+    ...env,
+    API: {
+      fetch: async (req) => {
+        asked.push(new URL(req.url).pathname);
+        return new Response(null, { status: req.headers.get("Cf-Access-Jwt-Assertion") === "owner" ? 200 : 403 });
+      },
+    },
+  };
+  const page = (jwt) =>
+    proxy.fetch(new Request("https://app.test/", { headers: jwt ? { "Cf-Access-Jwt-Assertion": jwt } : {} }), privateEnv);
+
+  assert.equal(await (await page("owner")).text(), "asset");
+  const denied = await page("guest");
+  assert.equal(denied.status, 403);
+  assert.doesNotMatch(await denied.text(), /asset/);
+  assert.equal((await page()).status, 403); // no Access JWT at all
+  await page("owner"); // cached: no second API call for the same JWT
+  assert.deepEqual(asked, ["/admin/me", "/admin/me"]);
+});

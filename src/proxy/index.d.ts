@@ -7,7 +7,11 @@ export interface ApiProxyEnv {
 /** True for a write (not GET / HEAD / OPTIONS) that a browser marks as coming from another origin. */
 export function crossSiteWrite(request: Request, url?: URL): boolean
 
-/** Worker handler: /api/* → the API service binding (CSRF-checked, path-limited), the rest → assets. */
-export function createApiProxy(options?: { prefixes?: string[] }): {
+/**
+ * Worker handler: /api/* → the API service binding (CSRF-checked, path-limited), the rest → assets.
+ * With `privateCheck` (an API path that answers 2xx only for allowed users, e.g. "/admin/me"),
+ * pages and files go only to those users; everyone else gets an empty page.
+ */
+export function createApiProxy(options?: { prefixes?: string[]; privateCheck?: string }): {
   fetch: (request: Request, env: ApiProxyEnv) => Promise<Response>
 }
