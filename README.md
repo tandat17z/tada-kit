@@ -81,6 +81,29 @@ What the user gets, all inside the menu:
   page (e.g. a banner): `openStorageRequest()` from `@tada/kit/account` opens the same form.
 - A thank-you popup after sending, and an **About the author** link (`author-url=""` hides it).
 
+### Language switch in the menu
+
+```tsx
+// React app: switch in place.
+<tdz-account lang={locale} languages={Object.keys(LOCALES).join(';')} />
+useEffect(() => {
+  const on = (e: Event) => { e.preventDefault(); setLocale((e as CustomEvent).detail.code) }
+  window.addEventListener('tdz-account:language', on)
+  return () => window.removeEventListener('tdz-account:language', on)
+}, [setLocale])
+```
+
+```html
+<!-- Static site: one link per language. -->
+<tdz-account lang="vi" languages="en=/about/;vi=/vi/about/" login-url="/login/"></tdz-account>
+```
+
+### Public site (guests)
+
+With `feedback-url` or `languages`, a signed-out visitor gets a guest menu: rating & feedback,
+language and **Sign in** (`login-url`). On an app set to **public** in the hub, guests rate it
+anonymously (the API keys them by a hash of their IP); signed-in users rate by email.
+
 ### Private site (owner only)
 
 Two layers, both from the kit. In the Worker, every page and file goes only to users the API

@@ -2,6 +2,16 @@
 
 All notable changes to `@tada/kit`. Newest first. Apps pin a version by git tag (`#vX.Y.Z`).
 
+## 0.2.0 — 2026-10-04
+
+### Added
+- Account menu guest mode: with `feedback-url` or `languages`, a signed-out visitor gets a menu
+  (guest, rating & feedback, language, sign in) instead of the bare "Sign in" link. The rating is
+  loaded for guests too; on a public app the API takes their rating anonymously.
+- `languages` attribute: a language switch in the menu, `"en=/about/;vi=/vi/about/"` (links) or
+  bare codes `"en;vi"`. Picking one fires the cancelable `tdz-account:language` event
+  (`detail: { code }`): call `preventDefault()` to switch in place (e.g. React `setLocale`).
+
 ## 0.1.8 — 2026-10-04
 
 ### Changed

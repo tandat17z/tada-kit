@@ -12,6 +12,9 @@
 //               where the user's data is stored and lets a user without server storage ask the
 //               owner for it (POST <account-url>/request). Also an email fallback, like me-url.
 //   feedback-url optional central-API feedback endpoint (/v1/<app>/feedback): shows the app's
+//               rating to everyone. On a public app guests rate it too, anonymously: with
+//               feedback-url or languages, a signed-out visitor gets a guest menu (sign in,
+//               language, rating & feedback) instead of the bare "Sign in" link. Also the app's
 //               average rating and a form to rate it (1-5 stars) and send a request or a message
 //               to the owner (POST <feedback-url>). With account-url, a request may also name an
 //               email to sync with: it is sent as an account link (POST <account-url>/link), which
@@ -20,13 +23,16 @@
 //               "tdz-account:request-storage") opens the menu with the form set to that request.
 //   author-url  link to the author's site at the bottom of the menu; defaults to AUTHOR_URL,
 //               author-url="" hides it.
+//   languages   optional "code=url;code=url" (e.g. "en=/about/;vi=/vi/about/") or bare codes
+//               ("vi;en"): a language switch in the menu, the current one (lang) marked.
 //   settings    optional (boolean): adds a "Settings" item; clicking it closes the menu and fires
 //               "tdz-account:settings" on window, so the page opens its own settings.
 //
 // Events on window: listens to "tdz-account:refresh" (re-read the account, e.g. after the page sent
 // a request itself) and "tdz-account:request-storage" (open the menu on the storage request form),
 // fires "tdz-account:change" after a request sent from the menu and
-// "tdz-account:settings" when the Settings item is clicked.
+// "tdz-account:settings" when the Settings item is clicked and "tdz-account:language" (detail:
+// { code }, cancelable) when a language is picked: preventDefault() to switch in place.
 //
 // Identity comes from /cdn-cgi/access/get-identity on the current host; sign-out uses
 // /cdn-cgi/access/logout. No tokens are read or stored here.
@@ -52,7 +58,7 @@
       thanksSync: "Yêu cầu đồng bộ với {email} đang chờ duyệt.", close: "Đóng",
       askStorage: "Xin lưu dữ liệu trên server", askStorageHint: "Giữ dữ liệu an toàn và dùng trên mọi thiết bị.",
       syncHint: "Đã có tài khoản khác? Ghi email đó để dùng chung dữ liệu.", sendRequest: "Gửi yêu cầu", requestText: "Bạn cần gì? (bắt buộc)", noteRequired: "Hãy ghi vài dòng cho yêu cầu này.",
-      thanksStorage: "Yêu cầu lưu dữ liệu trên server đang chờ duyệt." },
+      thanksStorage: "Yêu cầu lưu dữ liệu trên server đang chờ duyệt.", guest: "Khách", guestHint: "Chưa đăng nhập", language: "Ngôn ngữ" },
     en: { signIn: "Sign in", signOut: "Sign out", settings: "Settings", account: "Account", via: "Signed in with", admin: "Admin rights", yes: "Yes", no: "No",
       storage: "Data stored", cloud: "Server", local: "This browser", readonly: "Browser (server read-only)",
       request: "Ask for server storage", pending: "Request sent, waiting for approval.", rejected: "Your last request was not approved.",
@@ -68,8 +74,11 @@
       thanksSync: "The request to sync with {email} is waiting for approval.", close: "Close",
       askStorage: "Ask to store my data on the server", askStorageHint: "Keeps your data safe and on every device.",
       syncHint: "Have another account? Enter its email to share its data.", sendRequest: "Send request", requestText: "What do you need? (required)", noteRequired: "Please add a few words to this request.",
-      thanksStorage: "Your request for server storage is waiting for approval." },
+      thanksStorage: "Your request for server storage is waiting for approval.", guest: "Guest", guestHint: "Not signed in", language: "Language" },
   };
+
+  // Static markup only (no data): a person icon for the guest menu.
+  const PERSON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
 
   const initials = (name, email) => {
     const words = (name || email).split(/[\s@._-]+/).filter(Boolean);
@@ -153,6 +162,16 @@
     .kinds { display: flex; gap: 4px; padding: 2px; border-radius: 8px; border: 1px solid var(--border, #1f2328); }
     .kinds button { flex: 1; height: 26px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; color: var(--muted, #9ba2ac); }
     .kinds button[aria-pressed="true"] { background: var(--surface-2, #14171b); color: inherit; }
+    .langs { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; font-size: 12px; }
+    .langs > span { color: var(--subtle, var(--muted, #8a919c)); }
+    .langs .kinds a { display: grid; place-items: center; min-width: 36px; height: 24px; padding: 0 6px; border-radius: 6px; text-decoration: none;
+      color: var(--muted, #9ba2ac); font: 600 11px/1 var(--font-mono, var(--mono, ui-monospace, monospace)); text-transform: uppercase; }
+    .langs .kinds a[aria-current="true"] { background: var(--surface-2, #14171b); color: inherit; }
+    .langs .kinds a:hover { color: inherit; }
+    .langs .kinds a:focus-visible { outline: 2px solid var(--accent, #7ee0c3); }
+    .avatar svg { width: 16px; height: 16px; }
+    .who .avatar svg { width: 20px; height: 20px; }
+    .login.wide { display: flex; justify-content: center; height: 36px; margin-top: 14px; }
     dd.star { color: #f2c46d; }
     .author { display: block; margin-top: 10px; text-align: center; font-size: 12px; color: var(--muted, #9ba2ac); text-decoration: none; }
     .author:hover { color: var(--accent, #7ee0c3); text-decoration: underline; }
@@ -202,9 +221,12 @@
         const me = await getJson(meUrl);
         email = me.body?.email;
       }
-      if (!email) return this.renderSignedOut();
       const feedbackUrl = this.getAttribute("feedback-url");
       if (feedbackUrl) this.rating = (await getJson(feedbackUrl)).body;
+      if (!email) {
+        if (feedbackUrl || this.getAttribute("languages")) return this.renderSignedIn({ guest: true });
+        return this.renderSignedOut();
+      }
       if (accountUrl) {
         this.onRefresh = async () => {
           this.account = (await getJson(accountUrl)).body ?? this.account;
@@ -218,29 +240,75 @@
       this.renderSignedIn({ email, name, admin: admin === 200 ? true : admin === 403 ? false : null });
     }
 
-    renderSignedOut() {
+    // "Sign in" link back to the current page, or null without login-url.
+    loginLink(className = "login") {
       const url = this.getAttribute("login-url");
-      if (!url) return;
+      if (!url) return null;
       const a = document.createElement("a");
-      a.className = "login";
+      a.className = className;
       a.textContent = this.t.signIn;
       // Come back to the current page after signing in.
       a.href = `${url}${url.includes("?") ? "&" : "?"}return=${encodeURIComponent(location.pathname + location.search)}`;
-      this.shadowRoot.append(a);
+      return a;
     }
 
-    renderSignedIn({ email, name, admin }) {
+    renderSignedOut() {
+      const a = this.loginLink();
+      if (a) this.shadowRoot.append(a);
+    }
+
+    // Language switch from the languages attribute, or null. Each entry is "code=url" (a link, split
+    // at the first "=") or a bare "code" (the app switches by itself on "tdz-account:language").
+    languageRow() {
+      const items = (this.getAttribute("languages") || "").split(";").map((x) => {
+        const i = x.indexOf("=");
+        return (i < 0 ? [x, ""] : [x.slice(0, i), x.slice(i + 1)]).map((v) => v.trim());
+      }).filter(([c]) => c);
+      if (!items.length) return null;
+      const current = this.getAttribute("lang") === "en" ? "en" : "vi";
+      const row = Object.assign(document.createElement("div"), { className: "langs" });
+      const group = Object.assign(document.createElement("div"), { className: "kinds" });
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", this.t.language);
+      for (const [code, url] of items) {
+        const a = url
+          ? Object.assign(document.createElement("a"), { href: url, hreflang: code })
+          : Object.assign(document.createElement("a"), { href: "#", role: "button" });
+        Object.assign(a, { textContent: code, lang: code });
+        if (code === current) a.setAttribute("aria-current", "true");
+        // Cancelable: an app that switches in place (e.g. React setLocale) calls preventDefault();
+        // otherwise a link navigates as usual.
+        a.addEventListener("click", (e) => {
+          const event = new CustomEvent("tdz-account:language", { detail: { code }, cancelable: true });
+          window.dispatchEvent(event);
+          if (!event.defaultPrevented) {
+            if (!url) e.preventDefault();
+            return;
+          }
+          e.preventDefault();
+          this.shadowRoot.querySelector(".panel")?.setAttribute("hidden", "");
+          this.shadowRoot.querySelector("button.avatar")?.setAttribute("aria-expanded", "false");
+        });
+        group.append(a);
+      }
+      row.append(Object.assign(document.createElement("span"), { textContent: this.t.language }), group);
+      return row;
+    }
+
+    // Signed in, or (guest) a signed-out visitor's menu: sign in, language, rating & feedback.
+    renderSignedIn({ email, name, admin = null, guest = false }) {
       const t = this.t;
       const root = this.shadowRoot;
-      const letters = initials(name, email);
+      const letters = guest ? "" : initials(name, email);
 
       const button = document.createElement("button");
       button.type = "button";
       button.className = `avatar${admin === false ? " warn" : ""}`;
-      button.textContent = letters;
+      if (guest) button.innerHTML = PERSON;
+      else button.textContent = letters;
       button.setAttribute("aria-haspopup", "true");
       button.setAttribute("aria-expanded", "false");
-      button.setAttribute("aria-label", `${t.account}: ${email}`);
+      button.setAttribute("aria-label", `${t.account}: ${guest ? t.guest : email}`);
 
       const panel = document.createElement("div");
       panel.className = "panel";
@@ -253,10 +321,16 @@
       const big = document.createElement("span");
       big.className = "avatar";
       big.setAttribute("aria-hidden", "true");
-      big.textContent = letters;
+      if (guest) big.innerHTML = PERSON;
+      else big.textContent = letters;
       const info = document.createElement("div");
-      if (name) info.append(Object.assign(document.createElement("div"), { className: "name", textContent: name }));
-      info.append(Object.assign(document.createElement("div"), { className: "email", textContent: email, title: email }));
+      if (guest) {
+        info.append(Object.assign(document.createElement("div"), { className: "name", textContent: t.guest }));
+        info.append(Object.assign(document.createElement("div"), { className: "email", textContent: t.guestHint }));
+      } else {
+        if (name) info.append(Object.assign(document.createElement("div"), { className: "name", textContent: name }));
+        info.append(Object.assign(document.createElement("div"), { className: "email", textContent: email, title: email }));
+      }
       who.append(big, info);
 
       const dl = document.createElement("dl");
@@ -265,7 +339,7 @@
         d.append(Object.assign(document.createElement("dt"), { textContent: k }), Object.assign(document.createElement("dd"), { textContent: v, className: cls }));
         dl.append(d);
       };
-      row(t.via, "Cloudflare Access");
+      if (!guest) row(t.via, "Cloudflare Access");
       if (admin !== null) row(t.admin, admin ? t.yes : t.no, admin ? "yes" : "no");
 
       this.dl = dl;
@@ -274,6 +348,8 @@
 
       const logout = Object.assign(document.createElement("a"), { className: "logout", href: "/cdn-cgi/access/logout", textContent: t.signOut });
       panel.append(who, dl, this.storageBox, this.feedbackBox);
+      const langs = this.languageRow();
+      if (langs) panel.append(langs);
       root.append(button, panel);
       this.renderStorage();
       this.renderFeedback();
@@ -304,7 +380,8 @@
         });
         panel.append(settings);
       }
-      panel.append(logout);
+      const exit = guest ? this.loginLink("login wide") : logout;
+      if (exit) panel.append(exit);
       const authorUrl = this.getAttribute("author-url") ?? AUTHOR_URL;
       if (authorUrl && /^https?:\/\//.test(authorUrl)) {
         panel.append(Object.assign(document.createElement("a"), {
