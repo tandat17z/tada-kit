@@ -11,9 +11,12 @@
 //   account-url optional central-API account endpoint (/v1/<app>/account) of a shared app: shows
 //               where the user's data is stored and lets a user without server storage ask the
 //               owner for it (POST <account-url>/request). Also an email fallback, like me-url.
+//   settings    optional (boolean): adds a "Settings" item; clicking it closes the menu and fires
+//               "tdz-account:settings" on window, so the page opens its own settings.
 //
 // Events on window: listens to "tdz-account:refresh" (re-read the account, e.g. after the page sent
-// a request itself) and fires "tdz-account:change" after a request sent from the menu.
+// a request itself), fires "tdz-account:change" after a request sent from the menu and
+// "tdz-account:settings" when the Settings item is clicked.
 //
 // Identity comes from /cdn-cgi/access/get-identity on the current host; sign-out uses
 // /cdn-cgi/access/logout. No tokens are read or stored here.
@@ -21,11 +24,11 @@
   if (typeof customElements === "undefined" || customElements.get("tdz-account")) return; // SSR, or loaded twice
 
   const TEXT = {
-    vi: { signIn: "Đăng nhập", signOut: "Đăng xuất", account: "Tài khoản", via: "Đăng nhập qua", admin: "Quyền quản trị", yes: "Có", no: "Không",
+    vi: { signIn: "Đăng nhập", signOut: "Đăng xuất", settings: "Cài đặt", account: "Tài khoản", via: "Đăng nhập qua", admin: "Quyền quản trị", yes: "Có", no: "Không",
       storage: "Lưu dữ liệu", cloud: "Server", local: "Trình duyệt này", readonly: "Trình duyệt (server chỉ xem)",
       request: "Yêu cầu lưu trên server", pending: "Đã gửi yêu cầu, đang chờ duyệt.", rejected: "Yêu cầu trước chưa được chấp nhận.",
       message: "Lời nhắn (không bắt buộc)", send: "Gửi", cancel: "Huỷ", cooldown: "Gửi lại được sau một ngày.", failed: "Không gửi được, thử lại sau." },
-    en: { signIn: "Sign in", signOut: "Sign out", account: "Account", via: "Signed in with", admin: "Admin rights", yes: "Yes", no: "No",
+    en: { signIn: "Sign in", signOut: "Sign out", settings: "Settings", account: "Account", via: "Signed in with", admin: "Admin rights", yes: "Yes", no: "No",
       storage: "Data stored", cloud: "Server", local: "This browser", readonly: "Browser (server read-only)",
       request: "Ask for server storage", pending: "Request sent, waiting for approval.", rejected: "Your last request was not approved.",
       message: "Message (optional)", send: "Send", cancel: "Cancel", cooldown: "You can ask again after a day.", failed: "Could not send, try again later." },
@@ -65,12 +68,12 @@
     :host { position: relative; display: inline-flex; font: 500 13px/1.4 var(--font-sans, var(--sans, ui-sans-serif, system-ui, sans-serif)); color: var(--fg, var(--ink, #e7e9ec)); }
     button, a { font: inherit; color: inherit; }
     .login { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border-strong, var(--border, #2d3239)); text-decoration: none; }
-    .login:hover, .logout:hover { background: var(--surface-2, #14171b); }
+    .login:hover, .logout:hover, .settings:hover { background: var(--surface-2, #14171b); }
     .avatar { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border-radius: 999px; cursor: pointer;
       border: 1px solid var(--border-strong, var(--border, #2d3239)); background: var(--surface-2, #14171b); color: var(--accent, #7ee0c3);
       font: 600 12px/1 var(--font-mono, var(--mono, ui-monospace, monospace)); }
     .avatar.warn { border-color: #f2c46d99; color: #f2c46d; }
-    .avatar:focus-visible, .login:focus-visible, .logout:focus-visible { outline: 2px solid var(--accent, #7ee0c3); outline-offset: 2px; }
+    .avatar:focus-visible, .login:focus-visible, .logout:focus-visible, .settings:focus-visible { outline: 2px solid var(--accent, #7ee0c3); outline-offset: 2px; }
     .panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; width: 272px; padding: 16px; border-radius: 12px;
       border: 1px solid var(--border-strong, var(--border, #2d3239)); background: var(--surface, #0f1114); box-shadow: 0 16px 40px #0008; }
     .who { display: flex; gap: 12px; align-items: center; }
@@ -84,6 +87,10 @@
     dd.yes { color: var(--accent, #7ee0c3); } dd.no { color: #f2c46d; }
     .logout { display: flex; align-items: center; justify-content: center; height: 36px; margin-top: 14px; border-radius: 8px;
       border: 1px solid var(--border-strong, var(--border, #2d3239)); text-decoration: none; }
+    .settings { display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; margin-top: 14px; padding: 0 10px; border-radius: 8px;
+      border: 1px solid var(--border, #1f2328); background: transparent; cursor: pointer; text-align: left; }
+    .settings svg { width: 16px; height: 16px; color: var(--muted, #9ba2ac); }
+    .settings + .logout { margin-top: 8px; }
     .storage { display: grid; gap: 8px; margin-top: 12px; font-size: 12px; }
     .storage:empty { display: none; }
     .storage p { margin: 0; color: var(--muted, #9ba2ac); }
@@ -191,7 +198,7 @@
       this.storageBox = Object.assign(document.createElement("div"), { className: "storage" });
 
       const logout = Object.assign(document.createElement("a"), { className: "logout", href: "/cdn-cgi/access/logout", textContent: t.signOut });
-      panel.append(who, dl, this.storageBox, logout);
+      panel.append(who, dl, this.storageBox);
       root.append(button, panel);
       this.renderStorage();
 
@@ -199,6 +206,18 @@
         panel.hidden = !open;
         button.setAttribute("aria-expanded", String(open));
       };
+      if (this.hasAttribute("settings")) {
+        const settings = Object.assign(document.createElement("button"), { type: "button", className: "settings" });
+        // Static markup only (no data): a gear icon.
+        settings.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>';
+        settings.append(t.settings);
+        settings.addEventListener("click", () => {
+          setOpen(false);
+          window.dispatchEvent(new CustomEvent("tdz-account:settings"));
+        });
+        panel.append(settings);
+      }
+      panel.append(logout);
       button.addEventListener("click", (e) => {
         e.stopPropagation();
         setOpen(panel.hidden);

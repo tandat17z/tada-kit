@@ -10,6 +10,8 @@ declare module 'react' {
         'admin-url'?: string
         'me-url'?: string
         'account-url'?: string
+        /** Adds a Settings item that fires "tdz-account:settings" on window. */
+        settings?: boolean | ''
       }
     }
   }
