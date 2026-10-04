@@ -12,10 +12,10 @@ const changelog: ChangelogEntry[] = [
   { version: '1.0.0', date: '2026-09-30', changes: [{ text: 'First release' }] },
 ]
 
-<AppBrand name="MySite" shortName="MySiii" icon={<MyGlyph className="size-4" />} changelog={changelog} locale={locale} />
+<AppBrand name="MySite" shortName="MySiii" icon={<MyGlyph />} changelog={changelog} locale={locale} />
 ```
 
-- `shortName` + `icon`: the standard logo mark, the same in every app (tile, glyph over the short name). `icon` is optional (DaFinance has none); draw it with `currentColor`.
+- `shortName` + `icon`: the standard logo mark, the same in every app (tile, big glyph over a small short name). `icon` is optional; draw it with `currentColor` and a `viewBox`, without a size (the mark makes it 1.5rem high).
 - `logo`: a custom node instead of the standard mark.
 
 - `locale`: `en` (default) or `vi` for the built-in labels; entry text is a string or `{ en, vi }` (falls back to `en`).

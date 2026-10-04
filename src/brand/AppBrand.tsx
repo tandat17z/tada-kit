@@ -22,9 +22,9 @@ const shortDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso
 export interface AppBrandProps {
   /** App name next to the logo; hidden below `sm` to save room. */
   name: string
-  /** Short name for the standard logo mark (e.g. `DaGyyy`): a tinted tile with `icon` above it. */
+  /** Short name for the standard logo mark (e.g. `DaGyyy`): a tinted tile with a big `icon` above a small `shortName`. */
   shortName?: string
-  /** Glyph of the standard mark, above `shortName`. Draw it with `currentColor` (sized `size-4`). Optional. */
+  /** Glyph of the standard mark, above `shortName`. Draw it with `currentColor` and a `viewBox` but no size: the mark sizes it to 1.5rem high. Optional. */
   icon?: ReactNode
   /** Custom logo (an `<img>`, an inline SVG…); replaces the standard mark built from `shortName` / `icon`. */
   logo?: ReactNode
@@ -85,12 +85,12 @@ export function AppBrand({ name, shortName, icon, logo, changelog, version, loca
   )
 }
 
-/** Standard logo: a tinted tile holding the glyph and, under it, the short name. */
+/** Standard logo: a tinted tile with a big glyph and, small underneath, the short name. */
 export function BrandMark({ shortName, icon }: { shortName: string; icon?: ReactNode }) {
   return (
-    <span className="grid min-w-9 place-items-center gap-0.5 rounded-lg bg-accent/15 px-1.5 py-1 leading-none text-accent">
-      {icon}
-      <span className="font-mono text-[10px] font-semibold tracking-tight">{shortName}</span>
+    <span className="grid min-w-10 place-items-center gap-0.5 rounded-lg bg-accent/15 px-1.5 pb-1 pt-1.5 leading-none text-accent">
+      {icon && <span className="flex h-6 items-center justify-center [&>svg]:h-full [&>svg]:w-auto">{icon}</span>}
+      <span className="font-mono text-[7px] font-semibold tracking-tight">{shortName}</span>
     </span>
   )
 }

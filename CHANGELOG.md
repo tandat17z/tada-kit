@@ -2,6 +2,11 @@
 
 All notable changes to `@tada/kit`. Newest first. Apps pin a version by git tag (`#vX.Y.Z`).
 
+## 0.3.1 — 2026-10-04
+
+### Changed
+- `BrandMark`: a bigger glyph (1.5rem high, sized by the mark: pass an unsized `viewBox` svg) over a smaller short name (7px).
+
 ## 0.3.0 — 2026-10-04
 
 ### Added
