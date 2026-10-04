@@ -1,6 +1,6 @@
 # brand module
 
-Logo + app name + version for the top-left of a site. Clicking the version opens a changelog dialog.
+Logo mark (icon + short name on a tinted tile) + app name + version for the top-left of a site. Clicking the version opens a changelog dialog.
 Self-contained (React + Tailwind with the shared colour tokens: `surface`, `border`, `muted`, `accent`, `income`, `expense`, `inc-4`; no imports from the host app). Import it from `@tada/kit/brand`.
 
 ```tsx
@@ -12,8 +12,11 @@ const changelog: ChangelogEntry[] = [
   { version: '1.0.0', date: '2026-09-30', changes: [{ text: 'First release' }] },
 ]
 
-<AppBrand name="MySite" logo={<img src="/logo.svg" alt="" className="size-6" />} changelog={changelog} locale={locale} />
+<AppBrand name="MySite" shortName="MySiii" icon={<MyGlyph className="size-4" />} changelog={changelog} locale={locale} />
 ```
+
+- `shortName` + `icon`: the standard logo mark, the same in every app (tile, glyph over the short name). `icon` is optional (DaFinance has none); draw it with `currentColor`.
+- `logo`: a custom node instead of the standard mark.
 
 - `locale`: `en` (default) or `vi` for the built-in labels; entry text is a string or `{ en, vi }` (falls back to `en`).
 - `labels`: override any built-in label (or add a language by passing all of them).

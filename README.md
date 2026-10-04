@@ -6,6 +6,8 @@ One repository, one version; each module is imported on its own, so an app only 
 | Import | What | Needs |
 |---|---|---|
 | `@tada/kit/i18n` | `createI18n` → `I18nProvider`, `useI18n`, `LanguageSwitch` ([README](src/i18n/README.md)) | React, Tailwind + tokens |
+| `@tada/kit/layout` | `AppHeader`, `AppMain`, `headerTabClass`: the shared page shell and width ([README](src/layout/README.md)) | React, Tailwind + tokens |
+| `@tada/kit/theme` | `applyTheme`, `ThemePicker`: dark / light switch ([README](src/theme/README.md)); the light colours are in `tokens.css` | React, Tailwind + tokens |
 | `@tada/kit/brand` | `AppBrand`: logo, name, version, changelog dialog ([README](src/brand/README.md)) | React, Tailwind + tokens |
 | `@tada/kit/account` | Account types, `AccountGate`, `AccessGate` (private: nothing for users without access), `useAccount`, account-menu events | React, Tailwind + tokens |
 | `@tada/kit/account-menu` | Defines `<tdz-account>` (sign-in / account menu) and its JSX types | nothing |

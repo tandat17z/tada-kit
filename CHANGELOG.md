@@ -2,6 +2,18 @@
 
 All notable changes to `@tada/kit`. Newest first. Apps pin a version by git tag (`#vX.Y.Z`).
 
+## 0.3.0 — 2026-10-04
+
+### Added
+- `@tada/kit/layout`: `AppHeader` (the sticky three-slot header: brand, tabs, controls + account),
+  `headerTabClass` and `AppMain`, one page width (`max-w-screen-2xl`) for every app.
+- `@tada/kit/theme`: `applyTheme` (sets `data-theme` and the `theme-color` meta) and `ThemePicker`
+  (dark / light cards, en + vi labels).
+- `tokens.css`: the light colour set (`:root[data-theme='light']`) and `color-scheme` for form controls,
+  so apps no longer copy them.
+- `AppBrand`: the standard logo mark, a tinted tile with an optional `icon` above the `shortName`
+  (`BrandMark` is exported too); `logo` still takes a custom node.
+
 ## 0.2.0 — 2026-10-04
 
 ### Added

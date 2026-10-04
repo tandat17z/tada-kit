@@ -22,8 +22,12 @@ const shortDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso
 export interface AppBrandProps {
   /** App name next to the logo; hidden below `sm` to save room. */
   name: string
-  /** Any node: an `<img>`, an inline SVG, a text badge… */
-  logo: ReactNode
+  /** Short name for the standard logo mark (e.g. `DaGyyy`): a tinted tile with `icon` above it. */
+  shortName?: string
+  /** Glyph of the standard mark, above `shortName`. Draw it with `currentColor` (sized `size-4`). Optional. */
+  icon?: ReactNode
+  /** Custom logo (an `<img>`, an inline SVG…); replaces the standard mark built from `shortName` / `icon`. */
+  logo?: ReactNode
   /** Newest first. */
   changelog: ChangelogEntry[]
   /** Defaults to the first changelog entry, so the list is the single source of truth. */
@@ -41,7 +45,7 @@ export interface AppBrandProps {
  * Logo + name + version. The version is a button that opens the changelog in a dialog.
  * Self-contained (React + Tailwind with the shared colour tokens, no other imports).
  */
-export function AppBrand({ name, logo, changelog, version, locale = 'en', labels, nameClassName = 'hidden sm:inline', className = '' }: AppBrandProps) {
+export function AppBrand({ name, shortName, icon, logo, changelog, version, locale = 'en', labels, nameClassName = 'hidden sm:inline', className = '' }: AppBrandProps) {
   const l = { ...(LABELS[locale] ?? LABELS.en), ...labels }
   const current = version ?? changelog[0]?.version
   const [open, setOpen] = useState(false)
@@ -49,7 +53,7 @@ export function AppBrand({ name, logo, changelog, version, locale = 'en', labels
 
   return (
     <div className={`flex min-w-0 items-center gap-2 ${className}`}>
-      <span className="shrink-0">{logo}</span>
+      {(logo || shortName) && <span className="shrink-0">{logo ?? <BrandMark shortName={shortName!} icon={icon} />}</span>}
       <span className={`font-semibold tracking-tight ${nameClassName}`}>{name}</span>
       {current && (
         <button
@@ -78,6 +82,16 @@ export function AppBrand({ name, logo, changelog, version, locale = 'en', labels
           document.body,
         )}
     </div>
+  )
+}
+
+/** Standard logo: a tinted tile holding the glyph and, under it, the short name. */
+export function BrandMark({ shortName, icon }: { shortName: string; icon?: ReactNode }) {
+  return (
+    <span className="grid min-w-9 place-items-center gap-0.5 rounded-lg bg-accent/15 px-1.5 py-1 leading-none text-accent">
+      {icon}
+      <span className="font-mono text-[10px] font-semibold tracking-tight">{shortName}</span>
+    </span>
   )
 }
 

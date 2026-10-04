@@ -1,12 +1,14 @@
 {
   "name": "@tada/kit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Shared modules of the tandat17z apps: i18n, brand, account, API proxy, design tokens",
   "type": "module",
   "sideEffects": ["./src/account/menu.js", "*.css"],
   "exports": {
     "./i18n": "./src/i18n/index.ts",
     "./brand": "./src/brand/index.ts",
+    "./theme": "./src/theme/index.ts",
+    "./layout": "./src/layout/index.ts",
     "./account": "./src/account/index.ts",
     "./account-menu": {
       "types": "./src/account/menu.d.ts",
